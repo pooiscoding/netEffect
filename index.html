@@ -192,6 +192,7 @@
             key = false;
         }
         function animation(){
+            resize();
             if (nodes.length < config.nodeNum){
                 if (random_int(0, 1)){
                     nodes.push(new Node());
