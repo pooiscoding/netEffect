@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0" name="viewport" />
+    <title>effect3</title>
+    <style>
+        *{
+            margin: 0;
+            padding: 0;
+        }
+        body{
+            background-color: #333;
+            height: 100vh;
+            width: 100vw;
+            overflow: hidden;
+        }
+        #canvas{
+            height: 100%;
+            width: 100%;
+            position: fixed;
+            top: 0;
+            left: 0;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="canvas"></canvas>
+    <script>
+        const canvas = document.getElementById("canvas");
+        const ctx = canvas.getContext("2d");
+        let w = canvas.width = window.innerWidth;
+        let h = canvas.height = window.innerHeight;
+
+        let config = {
+            nodeNum : 20,
+            connectDistance : 200,
+            minDistance : 100,
+            nodeRadius : 5,
+            lineWeight : 3,
+            lineOpacity : .4,
+            rotateSpeed : 2,
+        }        
+        let mouse = {
+            x : undefined,
+            y : undefined
+        }
+
+        function random_int(minn, maxx){
+            return Math.round((Math.random() * (maxx - minn)) + minn);
+        }
+
+        let nodes = [];
+        let key = false;
+        class Node{
+            
+            constructor(){
+                this.x = random_int(w/4, 3 * w/4);
+                this.y = random_int(h/4, 3 * h/4);
+                this.destination = {
+                    x : this.x + random_int(-w/4, w/4),
+                    y : this.y + random_int(-h/4, h/4)
+                }
+                if (this.destination.x > w) this.destination = w - 10;
+                if (this.destination.y > h) this.destination = h - 10;
+                this.connectMouse = false;
+                this.rotateOrientation = random_int(0, 1);
+            }
+            draw(){
+                ctx.fillStyle = "rgb(255, 255, 255)";
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, config.nodeRadius, 0, Math.PI * 2);
+                ctx.closePath();
+                ctx.fill();
+            }
+            upd(){
+                let dx, dy;
+
+                if (this.connectMouse){
+                    this.destination.x = mouse.x;
+                    this.destination.y = mouse.y;
+                }
+                let dis = Math.sqrt((this.destination.x - this.x) * (this.destination.x - this.x) + (this.destination.y - this.y) * (this.destination.y - this.y));
+                if (this.connectMouse && dis < config.minDistance){
+                    if (key){
+                        dx = -1 * random_int(0, 2) * ((this.destination.x - this.x) / dis);
+                        dy = -1 * random_int(0, 2) * ((this.destination.y - this.y) / dis);
+                        this.x += dx;
+                        this.y += dy;
+                    }
+                    let tempX = this.x - this.destination.x;
+                    let tempY = this.y - this.destination.y;
+                    let rDeg = random_int(0, config.rotateSpeed) * .01;
+                    if (this.rotateOrientation) rDeg *= -1
+                    let cos = Math.cos(rDeg);
+                    let sin = Math.sin(rDeg);
+                    this.x = cos * tempX + sin * tempY + this.destination.x;
+                    this.y = -sin * tempX + cos * tempY + this.destination.y;
+
+
+                }else{
+                    
+                
+                    dx = random_int(0, 2) * ((this.destination.x - this.x) / dis);
+                    dy = random_int(0, 2) * ((this.destination.y - this.y) / dis);
+
+                    if (dis < config.nodeRadius){
+                        this.destination.x = random_int(0, w);
+                        this.destination.y = random_int(0, h);
+                    }
+
+                    this.x += dx;
+                    this.y += dy;
+                }
+
+                if (this.x > w) this.destination.x -= w / 4;
+                else if (this.x < 0) this.destination.x += w / 4;
+                if (this.y > h) this.destination.y -= h / 4;
+                else if (this.y < 0) this.destination.y += h / 4
+
+            }
+        }
+
+        class MouseNode{
+            
+            constructor(){
+                this.x = mouse.x;
+                this.y = mouse.y;
+            }
+            draw(){
+                ctx.fillStyle = "rgb(255, 255, 255)";
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, config.nodeRadius, 0, Math.PI * 2);
+                ctx.closePath();
+                ctx.fill();
+            }
+            upd(){
+                this.x = mouse.x;
+                this.y = mouse.y;
+            }
+        }
+        
+
+        function resize(){
+            w = canvas.width = window.innerWidth;
+            h = canvas.height = window.innerHeight;
+        }
+        function draw_lines(){
+            for (let i = 1; i < nodes.length; i++){
+                for (let j = i + 1; j < nodes.length; j++){
+                    let dx = nodes[i].x - nodes[j].x;
+                    let dy = nodes[i].y - nodes[j].y;
+                    let dis = Math.sqrt(dx*dx + dy*dy);
+                    if (dis < config.connectDistance){
+                        ctx.strokeStyle = "rgba(255, 255, 255, " + config.lineOpacity + ")" ;
+                        ctx.beginPath();
+                        ctx.moveTo(nodes[i].x, nodes[i].y);
+                        ctx.lineTo(nodes[j].x, nodes[j].y);
+                        ctx.lineWidth = config.lineWeight;
+                        ctx.stroke();
+                    }
+                }
+            }
+            for (let i = 1; i < nodes.length; i++){
+                let dx = nodes[i].x - mouse.x;
+                let dy = nodes[i].y - mouse.y;
+                let dis = Math.sqrt(dx*dx + dy*dy);
+                if (dis < config.connectDistance){
+                        ctx.strokeStyle = "rgba(255, 255, 255, " + config.lineOpacity + ")" ;
+                        ctx.beginPath();
+                        ctx.moveTo(nodes[i].x, nodes[i].y);
+                        ctx.lineTo(mouse.x, mouse.y);
+                        ctx.lineWidth = config.lineWeight;
+                        ctx.stroke();
+                        nodes[i].connectMouse = true;
+                }else if (nodes[i].connectMouse){
+                    nodes[i].connectMouse = false;
+                    nodes[i].destination.x = random_int(0, w);
+                    nodes[i].destination.y = random_int(0, h);
+                }
+            }
+            
+        }
+        function speed_up(){
+            config.rotateSpeed += 5;
+            config.minDistance = 200;
+            key = true;
+        }
+        function slow_down(){
+            config.rotateSpeed = 2;
+            config.minDistance = 100;
+            key = false;
+        }
+        function animation(){
+            if (nodes.length < config.nodeNum){
+                if (random_int(0, 1)){
+                    nodes.push(new Node());
+                }
+            }
+            ctx.clearRect(0, 0, w, h);
+            nodes[0].upd();
+            for (let i = 1; i < nodes.length; i++){
+                nodes[i].draw();
+                nodes[i].upd();
+            }
+            
+            draw_lines();
+            window.requestAnimationFrame(animation);
+        }
+        function init(){
+            ctx.clearRect(0, 0, w, h);
+            nodes.push(new MouseNode());
+            window.requestAnimationFrame(animation);
+        }
+        window.addEventListener("resize", resize);
+        window.addEventListener("DOMContentLoaded", init);
+        window.addEventListener("mousemove", (e)=>{
+            mouse.x = e.x;
+            mouse.y = e.y;
+        });
+        window.addEventListener("touchmove", (e)=>{
+            for (let i = 0; i < e.touches.length; i++){
+                mouse.x = e.touches[i].pageX;
+                mouse.y = e.touches[i].pageY;
+            }
+        });
+
+        window.addEventListener("mouseout",()=>{
+            for (let i = 1; i < nodes.length; i++){
+                if (nodes[i].connectMouse){
+                    nodes[i].connectMouse = false;
+                    nodes[i].destination.x = random_int(0, w);
+                    nodes[i].destination.y = random_int(0, h);
+                }
+            }
+            mouse.x = undefined;
+            mouse.y = undefined;
+        });
+        window.addEventListener("touchend", ()=>{
+            
+            for (let i = 1; i < nodes.length; i++){
+                if (nodes[i].connectMouse){
+                    nodes[i].connectMouse = false;
+                    nodes[i].destination.x = random_int(0, w);
+                    nodes[i].destination.y = random_int(0, h);
+                }
+            }
+            mouse.x = undefined;
+            mouse.y = undefined;
+
+        });
+        window.addEventListener("mousedown", speed_up);
+        window.addEventListener("mouseup", slow_down);
+    </script>
+</body>
+</html>
